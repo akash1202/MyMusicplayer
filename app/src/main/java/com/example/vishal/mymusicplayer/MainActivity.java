@@ -18,6 +18,9 @@ import android.support.v7.widget.LinearLayoutManager;
 import android.support.v7.widget.RecyclerView;
 import android.util.Log;
 import android.view.MotionEvent;
+import android.view.View;
+import android.widget.Button;
+import android.widget.SeekBar;
 import android.widget.Toast;
 
 import java.util.ArrayList;
@@ -27,9 +30,14 @@ public class MainActivity extends AppCompatActivity{
     public MediaPlayerService player;
     boolean serviceBound=false;
     ServiceConnection serviceConnection;
+    Button playpauseButton, nextButton, previousButton;
+    SeekBar seekBar;
+    int togglePlayPause = 0;
+    int pos = 0, totalSong = 0;
 
     ArrayList<Audio> audioList;     //available List of AudioFiles
     RecyclerView audioListAdapter;
+    CustomAdapter customAdapter;
     RecyclerView.LayoutManager layoutManager;
     private String PREFRENCENAME="AKASHSASH";
     SharedPreferences sharedPreferences;
@@ -40,14 +48,19 @@ public class MainActivity extends AppCompatActivity{
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
+        playpauseButton = (Button) findViewById(R.id.playpauseButton);
+        nextButton = (Button) findViewById(R.id.nextButton);
+        previousButton = (Button) findViewById(R.id.previousButton);
+        seekBar = (SeekBar) findViewById(R.id.seekbar);
         audioListAdapter= (RecyclerView) findViewById(R.id.AudioListAdapter);
             //Binding this Client to the AudioPlayer Service
         serviceConnection=new ServiceConnection() {
             // We've bound to LocalService, cast the IBinder and get LocalService instance
             @Override
             public void onServiceConnected(ComponentName componentName, IBinder iBinder) {
-                MediaPlayerService.LocalBinder localBinder=(MediaPlayerService.LocalBinder) iBinder;
-                player=localBinder.getService();
+                //MediaPlayerService.LocalBinder localBinder=(MediaPlayerService.LocalBinder) iBinder;
+                //player=localBinder.getService();
+                player = new MediaPlayerService(getApplicationContext(), MainActivity.this);
                 serviceBound=true;
                 Toast.makeText(MainActivity.this,"Service Bounded",Toast.LENGTH_LONG).show();
             }
@@ -62,12 +75,59 @@ public class MainActivity extends AppCompatActivity{
 
 
         loadAudio();
+        pos = 0;
 
         //play  first audio in audiolist
 
         //playAudio("https://upload.wikimedia.org/wikipedia/commons/6/6c/Grieg_Lyric_Pieces_Kobold.ogg");
         playAudio(0);
 
+        customAdapter.setClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View view) {
+                pos = audioListAdapter.indexOfChild(view);
+                Toast.makeText(MainActivity.this, "this is " + pos, Toast.LENGTH_SHORT).show();
+                playAudio(pos);
+            }
+        });
+
+
+        previousButton.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View view) {
+                Toast.makeText(MainActivity.this, "Previous Button pressed", Toast.LENGTH_SHORT).show();
+                player.skipToPrevious();
+            }
+        });
+
+        nextButton.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View view) {
+                Toast.makeText(MainActivity.this, "Next Button pressed", Toast.LENGTH_SHORT).show();
+                player.skipToNext();
+            }
+        });
+
+        playpauseButton.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View view) {
+
+                if (togglePlayPause == 0 && !player.mediaPlayer.isPlaying()) {  //already not playing and pressed the button
+                    playpauseButton.setBackground(getResources().getDrawable(R.drawable.ic_pause_circle_outline_black_24dp));
+                    player.playmedia();
+                    togglePlayPause = 1;
+                } else if (togglePlayPause == 0 && player.mediaPlayer.isPlaying()) {  //Started with already playing and pressed the button
+                    playpauseButton.setBackground(getResources().getDrawable(R.drawable.ic_pause_circle_outline_black_24dp));
+                    player.resumemedia();
+                    togglePlayPause = 1;
+                } else if (togglePlayPause == 1) {  //Playing and pressed the button
+                    player.pauseMedia();
+                    playpauseButton.setBackground(getResources().getDrawable(R.drawable.ic_play_circle_outline_black_24dp));
+                    togglePlayPause = 0;
+                }
+
+            }
+        });
 
         //startAudio(0);
         Log.d("message","Audio started");
@@ -94,6 +154,7 @@ public class MainActivity extends AppCompatActivity{
             //player is active
             player.stopSelf();
         }
+
     }
 
     /*public void playAudio(String media){
@@ -178,7 +239,9 @@ public class MainActivity extends AppCompatActivity{
     }
     cursor.close();
 
-        CustomAdapter customAdapter=new CustomAdapter(MainActivity.this,audioList,serviceConnection);
+
+        totalSong = audioList.size() - 1;
+        customAdapter = new CustomAdapter(MainActivity.this, audioList, serviceConnection);
         layoutManager= new LinearLayoutManager(getApplicationContext());
         audioListAdapter.setLayoutManager(layoutManager);
         audioListAdapter.setItemAnimator(new DefaultItemAnimator());

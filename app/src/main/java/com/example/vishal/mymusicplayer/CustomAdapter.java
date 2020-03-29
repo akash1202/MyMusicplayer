@@ -42,6 +42,7 @@ public class CustomAdapter extends RecyclerView.Adapter<CustomAdapter.MyViewHold
     ServiceConnection serviceConnection;
     PopupMenu popupMenu;
     boolean serviceBound = false;
+    View.OnClickListener mClickLIstener;
     public static final String Broadcast_PLAY_NEW_AUDIO="com.example.vishal.audioplayer.PlayNewAudio";
     private String PREFRENCENAME="AKASHSASH";
     SharedPreferences sharedPreferences;
@@ -67,11 +68,27 @@ public class CustomAdapter extends RecyclerView.Adapter<CustomAdapter.MyViewHold
         this.serviceConnection=serviceConnection;
         sharedPreferences=context.getSharedPreferences(PREFRENCENAME, Context.MODE_PRIVATE);
     }
+
+
+    public void setClickListener(View.OnClickListener callback) {
+        mClickLIstener = callback;
+    }
+
+
     @Override
     public MyViewHolder onCreateViewHolder(ViewGroup parent, int viewType) {
         View tempView=LayoutInflater.from(parent.getContext())
                 .inflate(R.layout.singleaudiolayout,parent,false);
-        return new MyViewHolder(tempView);
+        MyViewHolder holder = new MyViewHolder(tempView);
+        holder.itemView.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View view) {
+                mClickLIstener.onClick(view);
+            }
+        });
+
+        //return new MyViewHolder(tempView);
+        return holder;
     }
 
     @Override
@@ -95,13 +112,13 @@ public class CustomAdapter extends RecyclerView.Adapter<CustomAdapter.MyViewHold
            holder.stitleTextView.setText(tempname);
            holder.salbumTextView.setText(tempalbum);
            holder.sartistTextView.setText(tempartist);
-           holder.profilecircleImageView.setOnClickListener(new View.OnClickListener() {
+           /*holder.profilecircleImageView.setOnClickListener(new View.OnClickListener() {
                @Override
                public void onClick(View view) {
                    startAudio(position);
                     Toast.makeText(context,tname+" started", Toast.LENGTH_SHORT).show();
                }
-           });
+           });*/
 
 
            /*holder.optionView.setOnClickListener(new View.OnClickListener() {

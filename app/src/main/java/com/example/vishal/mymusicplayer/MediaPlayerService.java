@@ -1,9 +1,11 @@
 package com.example.vishal.mymusicplayer;
 
+import android.app.Activity;
 import android.app.Notification;
 import android.app.NotificationManager;
 import android.app.PendingIntent;
 import android.app.Service;
+import android.app.TaskStackBuilder;
 import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.Intent;
@@ -21,9 +23,12 @@ import android.os.IBinder;
 import android.os.RemoteException;
 import android.support.annotation.Nullable;
 import android.support.v4.app.NotificationCompat;
+import android.support.v7.app.AppCompatActivity;
 import android.telephony.PhoneStateListener;
 import android.telephony.TelephonyManager;
 import android.util.Log;
+import android.widget.SeekBar;
+import android.widget.TextView;
 
 import java.io.IOException;
 import java.util.ArrayList;
@@ -39,11 +44,13 @@ public class MediaPlayerService extends Service implements MediaPlayer.OnComplet
     private final IBinder iBinder=new LocalBinder();
 
 
-
-    private MediaPlayer mediaPlayer;
+    public MediaPlayer mediaPlayer;
     private String mediaFile;
     private int resumePosition;
     private AudioManager audioManager;
+
+    SeekBar seekBar;
+    TextView completedTime, remainTime;
 
     BroadcastReceiver becomingNoisyReceiver=new BroadcastReceiver() {
         @Override
@@ -79,6 +86,13 @@ public class MediaPlayerService extends Service implements MediaPlayer.OnComplet
     //AudioPlayer notification ID
     private static final int NOTIFICATION_ID=101;
 
+
+    public MediaPlayerService(Context context, Activity activity) {
+        seekBar = (SeekBar) activity.findViewById(R.id.seekbar);
+        completedTime = (TextView) activity.findViewById(R.id.completedTime);
+        remainTime = (TextView) activity.findViewById(R.id.remainTime);
+    }
+
     private void initMediaPlayer(){
     mediaPlayer=new MediaPlayer();
 
@@ -101,6 +115,8 @@ public class MediaPlayerService extends Service implements MediaPlayer.OnComplet
         stopSelf();
     }
        mediaPlayer.prepareAsync();
+
+
     }
 
     @Nullable
@@ -328,6 +344,10 @@ public class MediaPlayerService extends Service implements MediaPlayer.OnComplet
     public void onPrepared(MediaPlayer mediaPlayer) {
         //Invoked when the media source is ready for playback.
         playmedia();
+        seekBar.setProgress(0);
+        seekBar.setMax(mediaPlayer.getDuration());
+        completedTime.setText("00:00");
+        remainTime.setText(mediaPlayer.getDuration() + "");
     }
 
     @Override
@@ -366,27 +386,27 @@ public class MediaPlayerService extends Service implements MediaPlayer.OnComplet
     }
 
 
-    private void playmedia(){
+    public void playmedia() {
         if(!mediaPlayer.isPlaying()){
             mediaPlayer.start();
         }
     }
 
-    private void stopMedia(){
+    public void stopMedia() {
         if (mediaPlayer==null) return;
         if(mediaPlayer.isPlaying()){
             mediaPlayer.stop();
         }
     }
 
-    private void pauseMedia(){
+    public void pauseMedia() {
         if (mediaPlayer.isPlaying()){
             mediaPlayer.pause();
             resumePosition=mediaPlayer.getCurrentPosition();
         }
     }
 
-    private void resumemedia(){
+    public void resumemedia() {
         if(!mediaPlayer.isPlaying()){
             mediaPlayer.seekTo(resumePosition);
             mediaPlayer.start();
@@ -471,7 +491,7 @@ public class MediaPlayerService extends Service implements MediaPlayer.OnComplet
                 .build());
     }
 
-    private void skipToNext(){
+    public void skipToNext() {
 
         //get first if reach to end
         if(audioIndex==audioList.size()-1){
@@ -491,7 +511,7 @@ public class MediaPlayerService extends Service implements MediaPlayer.OnComplet
         initMediaPlayer();
     }
 
-    private void skipToPrevious(){
+    public void skipToPrevious() {
 
         //get first if reach to first
         if(audioIndex==0){
@@ -529,6 +549,11 @@ public class MediaPlayerService extends Service implements MediaPlayer.OnComplet
             play_pauseAction=playbackAction(0);
         }
 
+        Intent resultIntent = new Intent(this, MainActivity.class);
+        TaskStackBuilder stackBuilder = TaskStackBuilder.create(this);
+        stackBuilder.addNextIntentWithParentStack(resultIntent);
+        PendingIntent resultPendingIntent = stackBuilder.getPendingIntent(0, PendingIntent.FLAG_UPDATE_CURRENT);
+
         Bitmap largeIcon=BitmapFactory.decodeResource(getResources(),R.drawable.ic_launcher_background);
 
         //create a new Notification
@@ -544,12 +569,13 @@ public class MediaPlayerService extends Service implements MediaPlayer.OnComplet
                 .setSmallIcon(android.R.drawable.stat_sys_headset)
                 //set notification content information
                 .setContentText(activeAudio.getArtist())
-                .setContentTitle(activeAudio.getAlbum())
+                .setContentTitle(activeAudio.getTitle())
                 .setContentInfo(activeAudio.getTitle())
                 //add playback action
                 .addAction(android.R.drawable.ic_media_previous,"previous",playbackAction(3))
                 .addAction(notificationAction,"pause",play_pauseAction)
-                .addAction(android.R.drawable.ic_media_next,"next",playbackAction(2));
+                .addAction(android.R.drawable.ic_media_next, "next", playbackAction(2))
+                .setContentIntent(resultPendingIntent);
         ((NotificationManager) getSystemService(Context.NOTIFICATION_SERVICE)).notify(NOTIFICATION_ID,notificationBuilder.build());
 
     }
